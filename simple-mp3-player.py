@@ -57,7 +57,7 @@ def stopsong():
     pygame.mixer.music.stop()
 
 
-def insert_tracks():
+def insert_tracks(event=None):
 
     # playlist_items = playlist_box.get(0, len(playlist))
     # Fetching tracks
@@ -82,6 +82,9 @@ def insert_tracks():
 def remove_tracks():
     pass
 
+
+def quit_app(event=None):
+    root.destroy()
 
 root = Tk()
 
@@ -114,9 +117,16 @@ menubar = Menu(root)
 root.configure(menu=menubar)
 menu_file = Menu(menubar)
 menubar.add_cascade(menu=menu_file, label='File')
-menu_file.add_command(label='Insert tracks', command=insert_tracks)
+
+# Insert tracks menu item
+menu_file.add_command(label='Insert tracks', command=insert_tracks, accelerator="Ctrl+I")
+root.bind("<Control-i>", insert_tracks)
+
 menu_file.add_command(label='Remove tracks')
-menu_file.add_command(label='Quit')
+
+# Quit menu item
+menu_file.add_command(label='Quit', command= quit_app, accelerator="Ctrl+Q")
+root.bind('<Control-q>', quit_app)
 
 main_frame = ttk.Frame(root, padding="10 10 10 10")
 main_frame.grid(column=0, row=0)
