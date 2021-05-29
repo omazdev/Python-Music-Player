@@ -78,6 +78,9 @@ def insert_tracks(event=None):
 
 # TODO Implement remove tracks
 
+def change_vol(vol_event=None):
+    pygame.mixer.music.set_volume(float(vol_event))
+
 
 def remove_tracks():
     pass
@@ -101,7 +104,7 @@ root.option_add('*tearOff', FALSE)
 pygame.init()
 # Initiating Pygame Mixer
 pygame.mixer.init()
-pygame.mixer.music.set_volume(0.2)
+# pygame.mixer.music.set_volume(0.2)
 
 # Initialize var containing tracks full path
 playlist = []
@@ -188,6 +191,20 @@ stop_img = stop_img.subsample(3)
 stop_btn = Button(buttons_frame, image=stop_img,
                   command=stopsong, borderwidth=0)
 stop_btn.grid(row=0, column=1)
+
+# Volume Slider
+volume_ctrl = Scale(
+    buttons_frame,
+    from_ = 1,
+    to = 0,
+    orient = VERTICAL,
+    resolution = .1,
+    command=change_vol
+)
+volume_ctrl.grid(row=0, column=2)
+# Set volume's initial value
+volume_ctrl.set(0.6)
+
 
 insert_tracks()
 
