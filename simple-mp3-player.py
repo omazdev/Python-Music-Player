@@ -7,11 +7,11 @@ import time
 from mutagen import File
 
 
-def play_pause(event=None):
+def play_pause(event=None, track_idx=None):
     """ Play or Pause curent track and update track status label accordingly """
-    if playlist_box.get(ACTIVE):  # Check if playlist is not empty
+    if playlist_box.size() > 0:  # Check if playlist is not empty
         print("EVENT==========> ", event)
-        global previous_active_track_idx
+        global active_track_idx
         global track_total_play_time
         global track_last_slided_pos
         global track_last_paused_pos
@@ -27,11 +27,12 @@ def play_pause(event=None):
 
         track_pos_slider.configure(state="active")
 
-        if track_title.get() != track_name or track_status.get() == "(Stopped)" or event:  # event is a doube clic on a track
+        if track_idx or track_title.get() != track_name or track_status.get() == "(Stopped)" or event:  # event is a doube clic on a track
             
             # When playing another track while the current one is still playing or is paused,
             # Initialize track status    
             if track_status.get() == "(Playing)" or track_status.get() == "(Paused)":
+
                 print("INITIALIZING TRACK")
                 cancel_play_time_loop()
                 track_last_slided_pos = 0
@@ -39,35 +40,61 @@ def play_pause(event=None):
                 track_total_play_time = 0
                 track_pos_label.configure(text="00:00")
                 track_pos.set(0)
-                
-            selected_track_idx = int(playlist_box.curselection()[0])
-            track_path = playlist[selected_track_idx]
+            
+            if track_idx is not None:
+                selected_track_idx = track_idx
+                track_path = playlist[selected_track_idx]
+                # playlist_box.selection_set(track_idx)
+                track_name = playlist_box.get(track_idx)
+                print("--PLAYING IDX-- ", track_idx, "TRACK :", track_name)
+            else:
+                selected_track_idx = int(playlist_box.curselection()[0])
+                track_path = playlist[selected_track_idx]
 
-            try:
-                pygame.mixer.music.load(track_path)
-                pygame.mixer.music.play()
-                # Display Selected track title
-                track_title.set(track_name)
-                # Display track Status
-                track_status.set("(Playing)")
-                play_pause_btn.configure(image=pause_img)
+            pygame.mixer.music.load(track_path)
+            pygame.mixer.music.play()
+            print("================PLAYING======================")
+            # Display Selected track title
+            track_title.set(track_name)
+            # Display track Status
+            track_status.set("(Playing)")
+            play_pause_btn.configure(image=pause_img)
 
-                track_total_length =  track_length(track_path)
-                track_total_play_time = 0
-                play_time()
+            track_total_length =  track_length(track_path)
+            track_total_play_time = 0
 
-                cancel_track_end_event()
-                check_track_end_event()
+            play_time()
+            cancel_track_end_event()
+            check_track_end_event()
 
-                previous_active_track_idx = int(selected_track_idx)
-            except:
-                tkinter.messagebox.showwarning(
-                    title="Warning!", message=f"Audio file incorrect : {track_name}, Please chose another file!")
-                # Uselect the incorrect track
-                playlist_box.selection_clear(selected_track_idx)
-                # Select the previous active track
-                playlist_box.selection_set(previous_active_track_idx)
-                playlist_box.see(previous_active_track_idx)
+            active_track_idx = int(selected_track_idx)
+            # try:
+            #     pygame.mixer.music.load(track_path)
+            #     pygame.mixer.music.play()
+            #     print("================PLAYING======================")
+            #     # Display Selected track title
+            #     track_title.set(track_name)
+            #     # Display track Status
+            #     track_status.set("(Playing)")
+            #     play_pause_btn.configure(image=pause_img)
+
+            #     track_total_length =  track_length(track_path)
+            #     track_total_play_time = 0
+            #     play_time()
+            #     # time.sleep(.5)
+            #     root.after(.5,None)
+            #     cancel_track_end_event()
+            #     check_track_end_event()
+
+            #     active_track_idx = int(selected_track_idx)
+            # except:
+            #     tkinter.messagebox.showwarning(
+            #         title="Warning!", message=f"Audio file incorrect : {track_name}, Please chose another file!")
+            #     # Uselect the incorrect track
+            #     playlist_box.selection_clear(selected_track_idx)
+            #     # Select the previous active track
+            #     playlist_box.selection_set(active_track_idx)
+            #     playlist_box.see(active_track_idx)
 
         # PAUSE the track
         elif track_status.get() == "(Playing)":
@@ -79,10 +106,11 @@ def play_pause(event=None):
             track_status.set("(Paused)")
             play_pause_btn.configure(image=play_img)
             
+            print("================PAUSING======================")
             # Paused Song
             pygame.mixer.music.pause()
 
-        # PLAY the track
+        # REPLAY the track
         elif track_status.get() == "(Paused)":
 
             cancel_track_end_event()
@@ -102,11 +130,11 @@ def play_pause(event=None):
                     track_last_slided_pos= 0
                 pygame.mixer.music.play(0, track_pos.get())
             else:
-                print("UNPAUSING-----------")
+                print("================UNPAUSING======================")
                 # Playing back Song
                 pygame.mixer.music.unpause()
             
-            time.sleep(.5)
+            root.after(500)
             play_time()
             check_track_end_event()
     else:
@@ -118,25 +146,32 @@ def stopsong():
     """" Stop playing current track """
     global track_last_slided_pos 
     global track_last_paused_pos
-     
-    # Displaying Status
-    track_status.set("(Stopped)")
-    play_pause_btn.configure(image=play_img)
-    track_pos_label.configure(text="00:00")
-    track_pos.set(0)
-    track_last_slided_pos = 0
-    track_last_paused_pos = 0
-    track_pos_slider.configure(state="disabled")
-    cancel_track_end_event()
-    # Stopped Song
-    pygame.mixer.music.stop()
+    if playlist_box.size() > 0:
+        print("================STOPPING======================")
+        # Displaying Status
+        track_status.set("(Stopped)")
+        play_pause_btn.configure(image=play_img)
+        track_pos_label.configure(text="00:00")
+        track_pos.set(0)
+        track_last_slided_pos = 0
+        track_last_paused_pos = 0
+        track_pos_slider.configure(state="disabled")
+        cancel_play_time_loop()
+        cancel_track_end_event()
+        # Stopped Song
+        # pygame.mixer.music.stop()
+        # BUG Using rewind and pause instead of stop,
+        # Reason: after stoping track and playing the same track,
+        # and "End of track" event is generated, BUGGG???
+        pygame.mixer.music.rewind()
+        pygame.mixer.music.pause()
 
 
 def insert_tracks(event=None):
     """" Open dialog to insert audio files """
     # playlist_items = playlist_box.get(0, len(playlist))
     # Fetching tracks
-    tracks_items = tkinter.filedialog.askopenfilenames(filetypes=[(
+    tracks_items = filedialog.askopenfilenames(filetypes=[(
         "Audio files", ('*.flac', '*.wav', '*.mp3', '.ogg'))], title="Select tracks")
 
     # Force insertion of at least one track
@@ -152,7 +187,6 @@ def insert_tracks(event=None):
             playlist.append(track_path)
 
 
-# TODO Implement remove tracks
 def change_vol(vol_event=None):
     """" Control track volume """
     pygame.mixer.music.set_volume(float(vol_event))
@@ -164,7 +198,7 @@ def play_time(value=None):
     global track_last_slided_pos
     global play_time_loop_id 
     # Print track position only if the track is playing
-    if track_status.get() != "(Stopped)" and track_status.get() != "(Paused)":
+    if track_status.get() == "(Playing)":
             
         # The track is playing normally
         if (not value) and pygame.mixer.music.get_busy():
@@ -220,11 +254,13 @@ def check_track_end_event():
     global track_pos_label
     global check_track_end_id
     global TRACK_END
-    
-    if track_status.get() != "(Stopped)" and track_status.get() != "(Paused)":
+
+    print("----End event TRACK STATUS-------- : ", track_status.get())
+    if track_status.get() == "(Playing)":
 
         # If we reach the end of the track, initialize the player
         for event in pygame.event.get():
+            print("===____EVENT IS____=== ", event.type)
             if event.type == TRACK_END:
                 print("======END OF TRACK=========")
                 cancel_play_time_loop()
@@ -276,18 +312,85 @@ def change_track_position(value):
     print("=====SLIDING VALUE====== :", value)
     track_last_slided_pos = value
 
+    # If the track is playing, send slider value to play_time()
     if track_status.get() == "(Playing)":
         play_time(value)
-    else:
+    #else just update track position Label
+    else: 
         # Convert to format minutes:seconds
         current_time_formated = time.strftime('%M:%S', time.gmtime(float(track_pos.get())))
         track_pos_label.configure(text=current_time_formated)
          
 
-def remove_tracks():
-    pass
+def remove_track():
+    global track_total_play_time
+    global track_last_slided_pos
+    global track_last_paused_pos
+    
+    if playlist_box.size() > 0: # Check if the playlist is not empty
 
+        if playlist_box.curselection(): # Check if a track is selected
+            track_indx = int(playlist_box.curselection()[0]) # Get index of selected track
+            print(">>>>>TRACK INDX TO REMOVE<<<<< ", track_indx)
 
+            if track_indx >= 0 and track_indx <= playlist_box.size()-1:
+
+                print("============TRACK JBEFORE REMOVING ", track_indx, "PLAYLIST :", playlist)
+
+                track = playlist_box.get(track_indx)
+                playlist_box.delete(track_indx)
+                playlist.pop(track_indx)
+                print("--REMOVED TRACK FROM LIST :", playlist)
+
+                print("TRACK TITLE : ", track_title.get(), "DELETED TRACK", track) 
+                print("track_indx :", track_indx)
+                print("playlist_box state :", playlist_box.size())
+                if playlist_box.size() == 0:  # Check if playlist is empty
+                    print("INITIALIZING TRACK after delete")
+                    cancel_play_time_loop()
+                    cancel_track_end_event()
+                    track_status.set("---")
+                    track_title.set("---  : ")
+                    play_pause_btn.configure(image=play_img)
+                    track_last_slided_pos = 0
+                    track_last_paused_pos = 0
+                    track_total_play_time = 0
+                    track_pos_label.configure(text="00:00")
+                    track_length_label.configure(text="00:00")
+                    track_pos_slider.configure(state="disabled")
+                    track_pos.set(0)        
+                    # BUG Using rewind and pause instead of stop,
+                    # Reason: after stopping a track and playing the same track (or other track),
+                    # an "End of track" event is generated, BUGGG???
+                    pygame.mixer.music.rewind()
+                    pygame.mixer.music.pause()
+                    # pygame.mixer.music.stop()
+                # Playlist is not empty
+                elif track_title.get() == track: # The deleted track is the track being played
+                    # If track is not the last, play the next track (same index of removed track)
+                    if track_indx <= playlist_box.size()-1:
+                        playlist_box.selection_set(track_indx)
+                        play_pause(track_idx=track_indx)
+                    # If deleted track is the last, play the first track in playlist
+                    else:
+                        play_pause()
+                    print("----------DELETED PLAYING TRACK-----------")
+                else: # The deleted track is not the track being played
+                    print("====================ACTIVE TRACK BEFORE DELETION :", active_track_idx)
+                    # Select the Playing (Active) track
+                    if track_indx < active_track_idx: # The deleted track is before playing track
+                        playlist_box.selection_set(active_track_idx-1) 
+                    else: # The deleted track is after playing track
+                        playlist_box.selection_set(active_track_idx)
+                        
+        else: # User didn't select a track to delete
+            tkinter.messagebox.showwarning(
+                title="Warning!", message="Please select a TRACK to DELETE!")
+    else: # User trying to delete from empty playlist
+        tkinter.messagebox.showwarning(
+            title="Warning!", message="Playlist is empty. Please insert at least One TRACK to DELETE!")
+    
+    
 def quit_app(event=None):
     root.destroy()
 
@@ -334,6 +437,9 @@ track_last_slided_pos = 0
 track_last_paused_pos = 0
 
 track_total_play_time = 0
+
+active_track_idx = 0
+
 # Configure Menus
 menubar = Menu(root)
 root.configure(menu=menubar)
@@ -350,20 +456,20 @@ menu_file.add_command(label='Remove tracks')
 menu_file.add_command(label='Quit', command= quit_app, accelerator="Ctrl+Q")
 root.bind('<Control-q>', quit_app)
 
-main_frame = tkinter.ttk.Frame(root, padding="5 5 5 5")
+main_frame = ttk.Frame(root, padding="5 5 5 5")
 main_frame.grid(column=0, row=0)
 main_frame.columnconfigure(0, weight=1)
 main_frame.rowconfigure(0, weight=1)
 
 # Creating Playlist Frame
-songs_frame = tkinter.ttk.Frame(main_frame, padding="5 5 5 5")
+songs_frame = ttk.Frame(main_frame, padding="1 1 1 1")
 songs_frame.grid(column=0, row=0)
 
 # Inserting scrollbar
 scrol_y = Scrollbar(songs_frame, orient=VERTICAL)
 
 # Inserting Playlist listbox
-playlist_box = Listbox(songs_frame, width=60, height=10, yscrollcommand=scrol_y.set, selectbackground="grey",
+playlist_box = Listbox(songs_frame, width=55, height=10, yscrollcommand=scrol_y.set, selectbackground="grey",
                        selectmode=SINGLE, font=("times new roman", 12, "bold"), bg="white", fg="navyblue")
 
 # Applying Scrollbar to listbox
@@ -371,13 +477,25 @@ scrol_y.pack(side=RIGHT, fill=Y)
 scrol_y.config(command=playlist_box.yview)
 playlist_box.pack(fill=BOTH)
 
+# Add/remove track Frame
+add_remove_frame = ttk.Frame(main_frame, padding="1 1 1 1")
+add_remove_frame.grid(column=1, row=0, sticky="n")
+
+
+# Add track button
+add_track_btn = Button(add_remove_frame, text="+", width=1, height=1, command=insert_tracks)
+add_track_btn.grid(row=0, column=0)
+
+# Remove track button
+remove_track_btn = Button(add_remove_frame, text="-", width=1, height=1, command=remove_track)
+remove_track_btn.grid(row=1, column=0)
+
 # Handle double click on playlist item
 playlist_box.bind('<Double-Button-1>', play_pause)
 
-previous_active_track_idx = 0
 
 # Track Frame for Song infos
-track_frame = tkinter.ttk.Frame(main_frame, padding="1 1 1 1")
+track_frame = ttk.Frame(main_frame, padding="1 1 1 1")
 track_frame.grid(column=0, row=1)
 
 track_title_label = Label(track_frame, text="Song Title", textvariable=track_title, font=(
@@ -389,7 +507,7 @@ track_status_label = Label(track_frame, text="Song Title", textvariable=track_st
 track_status_label.grid(row=0, column=1)
 
 # Track Frame for Song slider and play time
-track_pos_frame = tkinter.ttk.Frame(main_frame, padding="1 1 1 1")
+track_pos_frame = ttk.Frame(main_frame, padding="1 1 1 1")
 track_pos_frame.grid(column=0, row=2)
 
 # track_pos = StringVar(value="0:0")
@@ -406,7 +524,7 @@ track_pos_slider.grid(row=1, column=1)
 
 
 # Buttons Frame
-buttons_frame = tkinter.ttk.Frame(main_frame, padding="2 2 2 2")
+buttons_frame = ttk.Frame(main_frame, padding="2 2 2 2")
 buttons_frame.grid(column=0, row=3)
 
 # Load Play Image
@@ -436,7 +554,7 @@ stop_btn.grid(row=0, column=1)
 volume_ctrl = Scale(buttons_frame, from_ = 1, to = 0, orient = VERTICAL, resolution = .1, command=change_vol)
 volume_ctrl.grid(row=0, column=2)
 # Set volume's initial value
-volume_ctrl.set(0.6)
+volume_ctrl.set(0.2)
 
 
 insert_tracks()
