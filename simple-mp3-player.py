@@ -44,13 +44,15 @@ def play_pause(event=None, track_idx=None):
                 track_pos_label.configure(text="00:00")
                 track_pos.set(0)
             
-            print("==========INDEX OF TRACK TO PLAY :", track_idx) 
+            print("==========INDEX OF TRACK TO PLAY :", track_idx)
+            # Track index argument provided: extract and play track with the provided index 
             if track_idx is not None:
                 selected_track_idx = track_idx
                 track_path = playlist[selected_track_idx]
                 # playlist_box.selection_set(track_idx)
                 track_name = playlist_box.get(track_idx)
                 print("--PLAYING IDX-- ", track_idx, "TRACK :", track_name)
+            # No track index provided: play selected track in the listbox
             else:
                 selected_track_idx = int(playlist_box.curselection()[0])
                 track_path = playlist[selected_track_idx]
@@ -295,9 +297,9 @@ def update_play_time(value=None):
                 print("=========VALUE IS ONE============= : ", track_last_slided_pos)
                 track_last_slided_pos= 0
 
-            # BUG : after every slide, playing from slider position
-            # is queued, pygame mixer plays from all positions
-            # Bug Fix : Loading after every user slide,
+            # BUG : after every slide, all slided positions are
+            # queued, pygame mixer plays from all positions
+            # Bug Fix : Load active track after every user slide.
             pygame.mixer.music.load(playlist[active_track_idx])
             pygame.mixer.music.play(0, float(track_last_slided_pos) )
 
