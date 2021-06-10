@@ -37,7 +37,7 @@ def play_pause(event=None, track_idx=None):
             if track_status.get() == "(Playing)" or track_status.get() == "(Paused)":
 
                 print("INITIALIZING TRACK")
-                cancel_play_time_loop()
+                cancel_update_play_time_loop()
                 track_last_slided_pos = 0
                 track_last_paused_pos = 0
                 track_total_play_time = 0
@@ -65,11 +65,13 @@ def play_pause(event=None, track_idx=None):
                 track_status.set("(Playing)")
                 play_pause_btn.configure(image=pause_img)
 
-                track_total_length =  track_length(track_path)
+                track_total_length =  get_track_length(track_path)
                 track_total_play_time = 0
 
-                play_time()
-                cancel_track_end_event()
+                playlist_box.see(selected_track_idx)
+
+                update_play_time()
+                cancel_track_end_event_loop()
                 check_track_end_event()
 
                 active_track_idx = int(selected_track_idx)
@@ -84,8 +86,8 @@ def play_pause(event=None, track_idx=None):
 
         # PAUSE the track
         elif track_status.get() == "(Playing)":
-            cancel_play_time_loop()
-            cancel_track_end_event()
+            cancel_update_play_time_loop()
+            cancel_track_end_event_loop()
 
             track_last_paused_pos = track_pos.get()
             # Displaying Status
@@ -96,10 +98,10 @@ def play_pause(event=None, track_idx=None):
             # Paused Song
             pygame.mixer.music.pause()
 
-        # REPLAY the track
+        # UNPAUSE the track
         elif track_status.get() == "(Paused)":
 
-            cancel_track_end_event()
+            cancel_track_end_event_loop()
             # Display the Status
             track_status.set("(Playing)")
             play_pause_btn.configure(image=pause_img)
@@ -115,13 +117,13 @@ def play_pause(event=None, track_idx=None):
                     print("=========VALUE IS ONE============= : ", track_pos.get())
                     track_last_slided_pos= 0
                 pygame.mixer.music.play(0, track_pos.get())
+            # UNPAUSE the track
             else:
                 print("================UNPAUSING======================")
-                # Playing back Song
                 pygame.mixer.music.unpause()
             
             root.after(500)
-            play_time()
+            update_play_time()
             check_track_end_event()
     else:
         tkinter.messagebox.showwarning(
@@ -176,8 +178,11 @@ def play_next():
             if active_track_idx == playlist_box.size()-1:
                 # RESET player
                 print("INITIALIZING TRACK AFTER NO NEXT TO PLAY")
-                cancel_play_time_loop()
-                cancel_track_end_event()
+                playlist_box.selection_clear(0, END)
+                active_track_idx = -1
+                # playlist_box.see(0)
+                cancel_update_play_time_loop()
+                cancel_track_end_event_loop()
                 track_status.set("---")
                 track_title.set("---  : ")
                 play_pause_btn.configure(image=play_img)
@@ -204,7 +209,7 @@ def play_next():
                 # root.after(100)
                 play_pause(track_idx=active_track_idx+1)
 
-def stopsong():
+def stop():
     """" Stop playing current track """
     global track_last_slided_pos 
     global track_last_paused_pos
@@ -218,8 +223,8 @@ def stopsong():
         track_last_slided_pos = 0
         track_last_paused_pos = 0
         track_pos_slider.configure(state="disabled")
-        cancel_play_time_loop()
-        cancel_track_end_event()
+        cancel_update_play_time_loop()
+        cancel_track_end_event_loop()
         # Stopped Song
         # pygame.mixer.music.stop()
         # BUG Using rewind and pause instead of stop,
@@ -249,12 +254,12 @@ def insert_tracks(event=None):
             playlist.append(track_path)
 
 
-def change_vol(vol_event=None):
+def change_volume(vol_event=None):
     """" Control track volume """
     pygame.mixer.music.set_volume(float(vol_event))
 
 
-def play_time(value=None):
+def update_play_time(value=None):
     """" Print track time position """
     global track_total_play_time
     global track_last_slided_pos
@@ -290,6 +295,10 @@ def play_time(value=None):
                 print("=========VALUE IS ONE============= : ", track_last_slided_pos)
                 track_last_slided_pos= 0
 
+            # BUG : after every slide, playing from slider position
+            # is queued, pygame mixer plays from all positions
+            # Bug Fix : Loading after every user slide,
+            pygame.mixer.music.load(playlist[active_track_idx])
             pygame.mixer.music.play(0, float(track_last_slided_pos) )
 
             # Convert to format minutes:seconds
@@ -298,10 +307,10 @@ def play_time(value=None):
             print("after current time: ", track_total_play_time, "slider position: ", track_pos.get())
 
         # Update every 1 second
-        play_time_loop_id = track_pos_label.after(1000, play_time)
+        play_time_loop_id = track_pos_label.after(1000, update_play_time)
 
 
-def cancel_play_time_loop():
+def cancel_update_play_time_loop():
     global play_time_loop_id
     
     if play_time_loop_id is not None:
@@ -325,8 +334,8 @@ def check_track_end_event():
             print("===____EVENT IS____=== ", event.type)
             if event.type == TRACK_END:
                 print("======END OF TRACK=========")
-                cancel_track_end_event()
-                cancel_play_time_loop()
+                cancel_track_end_event_loop()
+                cancel_update_play_time_loop()
                 # Displaying Status
                 track_status.set("(Stopped)")
                 track_pos_label.configure(text="00:00")
@@ -341,7 +350,7 @@ def check_track_end_event():
         check_track_end_id = root.after(100, check_track_end_event)
 
 
-def cancel_track_end_event():
+def cancel_track_end_event_loop():
     global check_track_end_id
     
     if check_track_end_id is not None:
@@ -349,7 +358,7 @@ def cancel_track_end_event():
         check_track_end_id = None
 
 
-def track_length(track_path):
+def get_track_length(track_path):
     """ Extract and print track length """
     track_extension = os.path.splitext(track_path)[1]
     if track_extension:
@@ -367,16 +376,16 @@ def track_length(track_path):
             return track_total_length
 
  
-def change_track_position(value):
+def change_track_play_position(value):
     global track_last_slided_pos
 
-    cancel_play_time_loop()
+    cancel_update_play_time_loop()
     print("=====SLIDING VALUE====== :", value)
     track_last_slided_pos = value
 
-    # If the track is playing, send slider value to play_time()
+    # If the track is playing, send slider value to update_play_time()
     if track_status.get() == "(Playing)":
-        play_time(value)
+        update_play_time(value)
     #else just update track position Label
     else: 
         # Convert to format minutes:seconds
@@ -409,8 +418,8 @@ def remove_track():
                 print("playlist_box state :", playlist_box.size())
                 if playlist_box.size() == 0:  # Check if playlist is empty
                     print("INITIALIZING TRACK after delete")
-                    cancel_play_time_loop()
-                    cancel_track_end_event()
+                    cancel_update_play_time_loop()
+                    cancel_track_end_event_loop()
                     track_status.set("---")
                     track_title.set("---  : ")
                     play_pause_btn.configure(image=play_img)
@@ -454,6 +463,7 @@ def remove_track():
     
     
 def quit_app(event=None):
+    pygame.mixer.quit()
     root.destroy()
 
 
@@ -478,13 +488,14 @@ pygame.mixer.init()
 # Initialize var containing tracks full path
 playlist = []
 
-
+# Configure track end event
 TRACK_END = pygame.USEREVENT + 1
 pygame.mixer.music.set_endevent(TRACK_END)
 
 track_title = StringVar()
 track_title.set("---  : ")
 
+# track_status : Playing, Paused, Stopped
 track_status = StringVar()
 track_status.set("---")
 
@@ -581,7 +592,7 @@ track_length_label.grid(row=1, column=2)
 
 
 track_pos_slider = Scale(track_pos_frame, length=400, from_=1, to=0, orient=HORIZONTAL,
-                         resolution=1, showvalue=False, variable=track_pos, state="disabled", command=change_track_position)
+                         resolution=1, showvalue=False, variable=track_pos, state="disabled", command=change_track_play_position)
 track_pos_slider.grid(row=1, column=1)
 
 
@@ -624,7 +635,7 @@ stop_img = PhotoImage(
     file="/home/nhwk/Documents/WebDev/Desktop/simple-mp3-player/player-stop.png")
 stop_img = stop_img.subsample(3)
 stop_btn = Button(buttons_frame, image=stop_img,
-                  command=stopsong, borderwidth=0)
+                  command=stop, borderwidth=0)
 stop_btn.grid(row=0, column=2)
 
 # "Next" button
@@ -634,7 +645,7 @@ next_btn.grid(row=0, column=3)
 
 
 # Volume Slider
-volume_ctrl = Scale(buttons_frame, from_ = 1, to = 0, orient = VERTICAL, resolution = .1, command=change_vol)
+volume_ctrl = Scale(buttons_frame, from_ = 1, to = 0, orient = VERTICAL, resolution = .1, command=change_volume)
 volume_ctrl.grid(row=0, column=4)
 # Set volume's initial value
 volume_ctrl.set(0.2)
