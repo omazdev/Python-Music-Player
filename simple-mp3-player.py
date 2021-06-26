@@ -5,6 +5,7 @@ import pygame
 import os.path
 from time import strftime, gmtime
 from mutagen import File
+from pydub import AudioSegment
 
 
 def play_pause(event=None, track_idx=None):
@@ -28,13 +29,6 @@ def play_pause(event=None, track_idx=None):
         # event is a doube clic on a track
         if (track_idx is not None) or track_title.get() != track_name or track_status.get() == "(Stopped)" or event:
 
-            # When playing another track while the current one is still playing or is paused,
-            # Initialize track status
-            if track_status.get() == "(Playing)" or track_status.get() == "(Paused)":
-                cancel_update_play_time_loop()
-                track_total_play_time = 0
-                reset_track()
-
             # Track index argument provided: extract and play track with the provided index
             if track_idx is not None:
                 selected_track_idx = track_idx
@@ -48,6 +42,13 @@ def play_pause(event=None, track_idx=None):
             try:
                 pygame.mixer.music.load(track_path)
                 pygame.mixer.music.play()
+                # When playing another track while the current one is still playing or is paused,
+                # Initialize track status
+                if track_status.get() == "(Playing)" or track_status.get() == "(Paused)":
+                    cancel_update_play_time_loop()
+                    track_total_play_time = 0
+                    reset_track()
+
                 # Display Selected track title
                 track_title.set(track_name)
                 # Display track Status
@@ -64,14 +65,8 @@ def play_pause(event=None, track_idx=None):
                 check_track_end_event()
 
                 active_track_idx = int(selected_track_idx)
-            except:
-                tkinter.messagebox.showwarning(
-                    title="Warning!", message=f"Audio file incorrect : {track_name}, Please chose another file!")
-                # Uselect the incorrect track
-                playlist_box.selection_clear(selected_track_idx)
-                # Select the previous active track
-                playlist_box.selection_set(active_track_idx)
-                playlist_box.see(active_track_idx)
+            except pygame.error as e:
+                handle_track_conversion_exception(track_path, selected_track_idx, e.args[0])
 
         # PAUSE the track
         elif track_status.get() == "(Playing)":
@@ -244,20 +239,25 @@ def update_play_time(value=None):
 
         # The user is moving the slider
         else:
-
             if int(float(track_last_slided_pos)) == 1.000:
                 track_last_slided_pos = 0
+            try: 
+                # BUG : after every slide, all slided positions are
+                # queued, pygame mixer plays from all positions
+                # Bug Fix : Load active track after every user slide.
+                track_path = playlist[active_track_idx]
+                pygame.mixer.music.load(track_path)
+                pygame.mixer.music.play(0, float(track_last_slided_pos))
 
-            # BUG : after every slide, all slided positions are
-            # queued, pygame mixer plays from all positions
-            # Bug Fix : Load active track after every user slide.
-            pygame.mixer.music.load(playlist[active_track_idx])
-            pygame.mixer.music.play(0, float(track_last_slided_pos))
-
-            # Convert to format minutes:seconds
-            current_time_formated = strftime(
-                '%M:%S', gmtime(float(track_last_slided_pos)))
-            track_pos_label.configure(text=current_time_formated)
+                # Convert to format minutes:seconds
+                current_time_formated = strftime(
+                    '%M:%S', gmtime(float(track_last_slided_pos)))
+                track_pos_label.configure(text=current_time_formated)
+            except pygame.error as e:
+                # track_pos_slider.configure(state="disabled")
+                stop()
+                handle_track_conversion_exception(track_path, active_track_idx, e.args[0])
+                return
 
         # Update every 1 second
         play_time_loop_id = track_pos_label.after(1000, update_play_time)
@@ -317,6 +317,18 @@ def get_track_length(track_path):
             track_length_label.configure(text=track_length_formated)
             track_pos_slider.configure(to=track_total_length)
             return track_total_length
+
+
+def convert_track(track_path):
+    """ Convert track format """
+    track_name, track_extension = os.path.splitext(track_path)
+    converted_track = None
+    if track_extension != "":
+        track_name += ".ogg"
+        converted_track = AudioSegment.from_file(track_path,
+                                                 format=track_extension[1:])
+        converted_track.export(track_name, format="ogg")
+    return converted_track, track_name
 
 
 def change_track_play_position(value):
@@ -415,6 +427,40 @@ def reset_track():
 def quit_app(event=None):
     pygame.mixer.quit()
     root.destroy()
+
+
+def handle_track_conversion_exception(track_path, track_idx, error):
+
+    global active_track_idx
+    track_name = os.path.basename(track_path)
+
+    if ((error == "Unrecognized audio format" 
+        or error == "Position not implemented for music type")
+        and tkinter.messagebox.askyesno("Convert file", "Can't play this audio format, convert to .ogg?")):
+        converted_track, converted_track_path = convert_track(track_path)
+        if converted_track is not None:
+            track_name = os.path.basename(converted_track_path)
+            playlist_box.delete(track_idx)
+            playlist_box.insert(track_idx, track_name)
+            playlist[track_idx] = converted_track_path
+            playlist_box.selection_set(track_idx)
+            play_pause(track_idx=track_idx)
+        else:
+            tkinter.messagebox.showwarning(
+                title="Warning!", message=f"Audio file incorrect : {track_name}, Please chose another file!")
+            # Uselect the incorrect track
+            playlist_box.selection_clear(track_idx)
+            # Select the previous active track
+            playlist_box.selection_set(active_track_idx)
+            playlist_box.see(active_track_idx)
+    else:
+        tkinter.messagebox.showwarning(
+            title="Warning!", message=f"Audio file incorrect : {track_name}, Please chose another file!")
+        # Uselect the incorrect track
+        playlist_box.selection_clear(track_idx)
+        # Select the previous active track
+        playlist_box.selection_set(active_track_idx)
+        playlist_box.see(active_track_idx)
 
 
 APP_TITLE = "SmPlayer"
