@@ -463,8 +463,16 @@ def handle_track_conversion_exception(track_path, track_idx, error):
         playlist_box.see(active_track_idx)
 
 
+def hide_show_volume_scale(_=None):
+    """ Show/Hide Volume Scale when volume image is clicked """
+    if volume_ctrl.winfo_viewable():
+        volume_frame.place_forget()
+    else:
+        volume_frame.place(x=512,y=120)
+
+
 APP_TITLE = "SmPlayer"
-MAIN_WINDOW_SIZE = "540x350"
+MAIN_WINDOW_SIZE = "550x350"
 
 base_folder = os.path.dirname(__file__)
 
@@ -550,14 +558,16 @@ menu_file.add_command(label='Quit', command=quit_app, accelerator="Ctrl+Q")
 root.bind('<Control-q>', quit_app)
 
 # App Main Frame
-main_frame = Frame(root, padx=5, pady=5)
+main_frame = Frame(root, width=550, height=350, padx=10, pady=10)
+# Prevent widgets from determining the frame's size
+main_frame.grid_propagate(0)
 main_frame.grid(column=0, row=0)
 main_frame.columnconfigure(0, weight=1)
 main_frame.rowconfigure(0, weight=1)
 
 # Playlist Frame
-songs_frame = Frame(main_frame, padx=0, pady=2)
-songs_frame.grid(column=0, row=0)
+songs_frame = Frame(main_frame, padx=20, pady=2)
+songs_frame.grid(column=0, row=0, sticky=W)
 
 # Inserting scrollbar
 scrol_y = Scrollbar(songs_frame, orient=VERTICAL)
@@ -574,8 +584,7 @@ playlist_box.pack(fill=BOTH)
 
 # Add/remove track Frame
 add_remove_frame = Frame(main_frame)
-add_remove_frame.grid(column=1, row=0, padx=0, pady=1)
-
+add_remove_frame.place(x=490, y=10)
 
 # Add track button
 add_track_btn = Button(add_remove_frame, text="+",
@@ -588,24 +597,19 @@ remove_track_btn = Button(add_remove_frame, text="-",
                           width=1, height=1, command=remove_track)
 remove_track_btn.grid(row=1, column=0, pady=1, padx=0)
 
+# Volume slider's Frame
+volume_frame = Frame(root.winfo_toplevel())
+# volume_frame.grid(column=0, row=2, padx=0, pady=1)
+volume_frame.place(x=512,y=120)
+volume_frame.place_forget()
+
 # Volume Slider
-volume_ctrl = Scale(add_remove_frame, from_=100, to=0, sliderlength=10, length=130,
+volume_ctrl = Scale(volume_frame, from_=100, to=0, sliderlength=10, length=130,
                     showvalue=False, orient=VERTICAL, resolution=1, command=change_volume)
-volume_ctrl.grid(row=2, column=0, pady=1)
+volume_ctrl.grid(row=0, column=0, pady=1)
 # Set volume's initial value
 volume_ctrl.set(40)
-
-# Volume image
-volume_img = PhotoImage(file=VOLUME_IMG_PATH) 
-volume_img = volume_img.subsample(20)
-
-# Mute Volume image
-mute_volume_img = PhotoImage(file=MUTE_SPEAKER_IMG_PATH) 
-mute_volume_img = mute_volume_img.subsample(20)
-
-volume_label = Label(add_remove_frame, image=volume_img)
-volume_label.grid(row=3, column=0)
-
+pygame.mixer.music.set_volume(0.4)
 
 # Handle double click on playlist item
 playlist_box.bind('<Double-Button-1>', play_pause)
@@ -632,12 +636,24 @@ track_pos_label = Label(track_pos_frame, text="00:00")
 track_pos_label.grid(row=1, column=0)
 
 track_length_label = Label(track_pos_frame, text="00:00")
-track_length_label.grid(row=1, column=2)
+track_length_label.grid(row=1, column=2, padx=5)
 
 
 track_pos_slider = Scale(track_pos_frame, length=400, from_=1, to=0, orient=HORIZONTAL, sliderlength=10,
                          resolution=1, showvalue=False, variable=track_pos, state="disabled", command=change_track_play_position)
 track_pos_slider.grid(row=1, column=1)
+
+# Volume image
+volume_img = PhotoImage(file=VOLUME_IMG_PATH) 
+volume_img = volume_img.subsample(20)
+
+# Mute Volume image
+mute_volume_img = PhotoImage(file=MUTE_SPEAKER_IMG_PATH) 
+mute_volume_img = mute_volume_img.subsample(20)
+
+volume_label = Label(track_pos_frame, image=volume_img, )
+volume_label.grid(row=1, column=3)
+volume_label.bind("<Button-1>", hide_show_volume_scale)
 
 
 # Buttons Frame
