@@ -1,9 +1,10 @@
-from tkinter import *
-from tkinter import  filedialog
-import tkinter
-import pygame
 import os.path
-from time import strftime, gmtime
+import tkinter
+from time import gmtime, strftime
+from tkinter import *
+from tkinter import filedialog
+
+import pygame
 from mutagen import File
 from pydub import AudioSegment
 
@@ -26,6 +27,10 @@ def play_pause(event=None, track_idx=None):
 
         track_pos_slider.configure(state="active")
 
+        # Play selected track if: 
+        # 1: double click on track
+        # 2: a track index is provided
+        # 3: a track is "stopped"
         # event is a doube clic on a track
         if (track_idx is not None) or track_title.get() != track_name or track_status.get() == "(Stopped)" or event:
 
@@ -177,7 +182,7 @@ def stop():
         # pygame.mixer.music.stop()
         # BUG Using rewind and pause instead of stop,
         # Reason: after stoping track and playing the same track,
-        # and "End of track" event is generated, BUGGG???
+        # an "End of track" event is generated, BUGGG???
         pygame.mixer.music.rewind()
         pygame.mixer.music.pause()
 
@@ -264,6 +269,7 @@ def update_play_time(value=None):
 
 
 def cancel_update_play_time_loop():
+    """ Cancel update_play_time() loop """
     global play_time_loop_id
 
     if play_time_loop_id is not None:
@@ -272,7 +278,7 @@ def cancel_update_play_time_loop():
 
 
 def check_track_end_event():
-
+    """ Loop to check get 'track end' event """
     global check_track_end_id
     global TRACK_END
 
@@ -293,6 +299,7 @@ def check_track_end_event():
 
 
 def cancel_track_end_event_loop():
+    """ Cancel check_track_end_event() loop """
     global check_track_end_id
 
     if check_track_end_id is not None:
@@ -320,7 +327,7 @@ def get_track_length(track_path):
 
 
 def convert_track(track_path):
-    """ Convert track format """
+    """ Convert track to .ogg audio format """
     track_name, track_extension = os.path.splitext(track_path)
     converted_track = None
     if track_extension != "":
@@ -332,6 +339,11 @@ def convert_track(track_path):
 
 
 def change_track_play_position(value):
+    """
+    Play track from scale's slided position if the
+    track is playing, else just update position label
+    """
+
     global track_last_slided_pos
 
     cancel_update_play_time_loop()
@@ -349,7 +361,7 @@ def change_track_play_position(value):
 
 
 def remove_track():
-
+    """ Romeve selected track from the listbox """
     if playlist_box.size() > 0:  # Check if the playlist is not empty
 
         if playlist_box.curselection():  # Check if a track is selected
@@ -395,6 +407,7 @@ def remove_track():
 
 
 def init_player():
+    """ Reset player's labels/vars/scale, and cancel event loops """
     global active_track_idx
     global track_last_slided_pos
     global track_last_paused_pos
@@ -416,6 +429,7 @@ def init_player():
     track_pos.set(0)
 
 def reset_track():
+    """ Reset track to zero """
     global track_last_slided_pos
     global track_last_paused_pos
         
@@ -425,12 +439,13 @@ def reset_track():
     track_last_paused_pos = 0
 
 def quit_app(event=None):
+    """ Quit mixer and exit app """
     pygame.mixer.quit()
     root.destroy()
 
 
 def handle_track_conversion_exception(track_path, track_idx, error):
-
+    """ Handle track conversion exception """
     global active_track_idx
     track_name = os.path.basename(track_path)
 
@@ -476,14 +491,14 @@ MAIN_WINDOW_SIZE = "550x350"
 
 base_folder = os.path.dirname(__file__)
 
-APP_ICON = os.path.join(base_folder, 'simple-mp3-player.png')
-PRV_IMG_PATH = os.path.join(base_folder, 'player-previous.png') 
-PLAY_IMG_PATH = os.path.join(base_folder, 'player-play.png')
-PAUSE_IMG_PATH = os.path.join(base_folder, 'player-pause.png')
-NEXT_IMG_PATH = os.path.join(base_folder, 'player-next.png')
-STOP_IMG_PATH = os.path.join(base_folder, 'player-stop.png')
-VOLUME_IMG_PATH = os.path.join(base_folder, 'volume.png')
-MUTE_SPEAKER_IMG_PATH = os.path.join(base_folder, 'mute-speaker.png')
+APP_ICON = os.path.join(base_folder, 'images/simple-mp3-player.png')
+PRV_IMG_PATH = os.path.join(base_folder, 'images/player-previous.png') 
+PLAY_IMG_PATH = os.path.join(base_folder, 'images/player-play.png')
+PAUSE_IMG_PATH = os.path.join(base_folder, 'images/player-pause.png')
+NEXT_IMG_PATH = os.path.join(base_folder, 'images/player-next.png')
+STOP_IMG_PATH = os.path.join(base_folder, 'images/player-stop.png')
+VOLUME_IMG_PATH = os.path.join(base_folder, 'images/volume.png')
+MUTE_SPEAKER_IMG_PATH = os.path.join(base_folder, 'images/mute-speaker.png')
 
 root = Tk()
 
